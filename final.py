@@ -16,8 +16,8 @@ import locale
 
 def get_soup_links(html_file):
     ''' 
-    returns dict of soups with ratings on the page
-    key = soup name, value  = soup link
+        returns dict of soups with ratings on the page
+        key = soup name, value  = soup link
     '''
     soup_links = {}
     with open (html_file, 'r') as f:
@@ -58,18 +58,34 @@ def get_soup_dict(soup_links):
     ''' 
     parameter is dict of soup names and links
     returns nested dictionary
-    outer key is soup name, inner keys are 'dietary restriction' and 'cost'
+    outer key is soup name, inner keys are 'Dietary Status', 'gluten free', 'cost per serving', 'Preparation Time'
     '''
+    soup_dict = {}
     for soup in soup_links:
-        response = requests.get('https://api.spoonacular.com/recipes/extract')
+        soup_info = {}
+        url = "https://api.spoonacular.com/recipes/extract?apiKey=72bec16b5b99467f95cf13c8c14836f6&url=" + soup_links[soup] + "&analyze=true&includeNutrition=true"
+        response = requests.get(url)
         data = response.text
         in_dict = json.loads(data)
+        write_json(filename, in_dict)
+        gluten_free = in_dict["glutenFree"]
+        soup_info["Gluten Free"] = in_dict["glutenFree"]
+        soup_info["Cost per Serving"] = in_dict["pricePerServing"]
+        soup_info["Preparation Time"] = in_dict["readyInMinutes"]
+        if in_dict["vegan"] == True:
+            soup_info["Dietary Status"] = "vegan"
+        elif in_dict["vegetarian"] == True:
+            soup_info["Dietary Status"] = "vegetarian"
+        else:
+            soup_info["Dietary Status"] = "none"
+        soup_dict[soup] = soup_info
+    return soup_dict
 
 if __name__ == '__main__':
     soup_links = get_soup_links('soup_search_results1.html')
     dir_path = os.path.dirname(os.path.realpath(__file__))
     filename = dir_path + '/' + "soup.json"
     cache = load_json(filename)
-    get_soup_dict(soup_links)
-    write_json(filename, cache)
+    soup_dict = get_soup_dict(soup_links)
+    write_json(filename, soup_dict)
     unittest.main(verbosity=2)
