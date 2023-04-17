@@ -2,7 +2,6 @@
 # Your name: Clara Bowman; Camille Zuidema
 # Your student id: 36800347; 14358962
 # Your email: clar@umich.edu; czuidema@umich.edu
-# List who you have worked with on this project: N/A
 
 import unittest
 import sqlite3
@@ -74,7 +73,7 @@ def write_json(filename, dict):
     with open(filename, 'w') as outfile:
         json.dump(dict, outfile, indent=4)
 
-def get_soup_dict(curr, conn, num_soup_links):
+def get_soup_dict(curr, conn, num_soup_links, api_key):
     ''' 
     parameter is dict of soup names and links
     returns nested dictionary
@@ -87,7 +86,7 @@ def get_soup_dict(curr, conn, num_soup_links):
     for i in range(first_index, last_index):
         soup_link = cur.execute("SELECT link FROM Links WHERE id = ?", (i, ))
         soup_info = {}
-        url = "https://api.spoonacular.com/recipes/extract?apiKey=7566718381f04a4aa1c907595917725e&url=" + cur.fetchone()[0] + "&analyze=true&includeNutrition=true"
+        url = "https://api.spoonacular.com/recipes/extract?apiKey=" + api_key + "&url=" + cur.fetchone()[0] + "&analyze=true&includeNutrition=true"
         response = requests.get(url)
         data = response.text
         in_dict = json.loads(data)
@@ -130,11 +129,12 @@ def add_soup(cur, conn, filename):
 if __name__ == '__main__':
     cur, conn = open_database('soup.db')
     create_tables(cur, conn)
-    query = "vegan soup"
+    query = "slow cooker soup"
+    api_key = "7566718381f04a4aa1c907595917725e"
     num_soup_links = get_soup_links(query, cur, conn)
     dir_path = os.path.dirname(os.path.realpath(__file__))
     filename = dir_path + '/' + "soup.json"
     cache = load_json(filename)
-    #get_soup_dict(cur, conn, num_soup_links)
+    get_soup_dict(cur, conn, num_soup_links, api_key)
     add_soup(cur, conn, filename)
     unittest.main(verbosity=2)
