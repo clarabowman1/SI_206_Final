@@ -12,6 +12,8 @@ import requests
 import json
 import os
 import locale
+import numpy as np
+import matplotlib.pyplot as plt
 
 def open_database(db_name):
     path = os.path.dirname(os.path.abspath(__file__))
@@ -124,17 +126,60 @@ def add_soup(cur, conn, filename):
         cur.execute("INSERT OR IGNORE INTO Soups (id, diet_id, gluten_free, cost_per_serving, preparation_time) VALUES (?,?,?,?,?)",(soup_id, diet_id, soup_dict[soup]["Gluten Free"], soup_dict[soup]["Cost per Serving"], soup_dict[soup]["Preparation Time"]))
     conn.commit()
 
+def make_hist(cur, conn):
+    cur.execute('SELECT Soups.preparation_time FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Diets.diet = "vegan"')
+    max_time = 0
+    vegan_times = cur.fetchall()
+    vegan = []
+    for time in vegan_times:
+        if (time[0] > 0):
+            vegan.append(time[0])
+        if (time[0] > max_time):
+            max_time = time[0]
+    cur.execute('SELECT Soups.preparation_time FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Diets.diet = "vegetarian"')
+    vegetarian_times = cur.fetchall()
+    vegetarian = []
+    for time in vegetarian_times:
+        if (time[0] > 0):
+            vegetarian.append(time[0])
+        if (time[0] > max_time):
+            max_time = time[0]
+    cur.execute('SELECT Soups.preparation_time FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Diets.diet = "none"')
+    none_times = cur.fetchall()
+    none = []
+    for time in none_times:
+        if (time[0] > 0):
+            none.append(time[0])
+        if (time[0] > max_time):
+            max_time = time[0]
+    num_bars = max_time // 15
+    bins = []
+    for i in range(num_bars):
+        bins.append(15 * i)
+    bins.append(max_time)
+    colors=['red', 'blue', 'green']
+    plt.figure()
+    plt.hist([none, vegetarian, vegan], bins, color = colors, stacked=True, label = ["None", "Vegetarian", "Vegan"])
+    plt.xlabel('Preparation Time (min)')
+    plt.ylabel('Number of Recipes')
+    plt.title('Preparation Times of Recipes of Different Diets')
+    plt.legend()
+    plt.show()
+
+
+
 
 
 if __name__ == '__main__':
     cur, conn = open_database('soup.db')
     create_tables(cur, conn)
-    query = "slow cooker soup"
-    api_key = "7566718381f04a4aa1c907595917725e"
-    num_soup_links = get_soup_links(query, cur, conn)
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    filename = dir_path + '/' + "soup.json"
-    cache = load_json(filename)
-    get_soup_dict(cur, conn, num_soup_links, api_key)
-    add_soup(cur, conn, filename)
+    #query = "slow cooker soup"
+    #api_key = "7566718381f04a4aa1c907595917725e"
+    #num_soup_links = get_soup_links(query, cur, conn)
+    #dir_path = os.path.dirname(os.path.realpath(__file__))
+    #filename = dir_path + '/' + "soup.json"
+    #cache = load_json(filename)
+    #get_soup_dict(cur, conn, num_soup_links, api_key)
+    #add_soup(cur, conn, filename)
+    make_hist(cur, conn)
     unittest.main(verbosity=2)
