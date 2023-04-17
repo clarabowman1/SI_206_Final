@@ -166,8 +166,57 @@ def make_hist(cur, conn):
     plt.legend()
     plt.show()
 
+def make_scatter_gf(cur, conn):
+    cur.execute("SELECT preparation_time, cost_per_serving FROM Soups WHERE preparation_time > 0 AND gluten_free = True AND cost_per_serving < 500")
+    gf_list = cur.fetchall()
+    cur.execute("SELECT preparation_time, cost_per_serving FROM Soups WHERE preparation_time > 0 AND gluten_free = False AND cost_per_serving < 500")
+    non_gf_list = cur.fetchall()
+    gf_x = []
+    gf_y = []
+    ngf_x = []
+    ngf_y = []
+    for recipe in gf_list:
+        gf_x.append(recipe[0])
+        gf_y.append(recipe[1])
+    for recipe in non_gf_list:
+        ngf_x.append(recipe[0])
+        ngf_y.append(recipe[1])
+    plt.xlabel('Preparation Time (min)')
+    plt.ylabel('Cost per Serving (cents)')
+    plt.title('Preparation Time vs Cost per Serving of Gluten Free and Non-Gluten Free Recipes')
+    plt.scatter(gf_x, gf_y)
+    plt.scatter(ngf_x, ngf_y)
+    plt.show()
 
-
+def make_scatter_diet(cur, conn):
+    cur.execute('SELECT Soups.preparation_time, Soups.cost_per_serving FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Soups.preparation_time > 0 AND Soups.cost_per_serving < 500 AND Diets.diet = "vegan"')
+    vegan_list = cur.fetchall()
+    cur.execute('SELECT Soups.preparation_time, Soups.cost_per_serving FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Soups.preparation_time > 0 AND Soups.cost_per_serving < 500 AND Diets.diet = "vegetarian"')
+    vegetarian_list = cur.fetchall()
+    cur.execute('SELECT Soups.preparation_time, Soups.cost_per_serving FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Soups.preparation_time > 0 AND Soups.cost_per_serving < 500 AND Diets.diet = "none"')
+    none_list = cur.fetchall()
+    vv_x = []
+    vv_y = []
+    veg_x = []
+    veg_y = []
+    n_x = []
+    n_y = []
+    for recipe in vegan_list:
+        vv_x.append(recipe[0])
+        vv_y.append(recipe[1])
+    for recipe in vegetarian_list:
+        veg_x.append(recipe[0])
+        veg_y.append(recipe[1])
+    for recipe in none_list:
+        n_x.append(recipe[0])
+        n_y.append(recipe[1]) 
+    plt.scatter(n_x, n_y, c = 'red')
+    plt.scatter(veg_x, veg_y, c = 'blue')
+    plt.scatter(vv_x, vv_y, c = 'green')
+    plt.xlabel('Preparation Time (min)')
+    plt.ylabel('Cost per Serving (cents)')
+    plt.title('Preparation Time vs Cost per Serving of Different Diets')
+    plt.show()
 
 
 if __name__ == '__main__':
@@ -181,5 +230,6 @@ if __name__ == '__main__':
     #cache = load_json(filename)
     #get_soup_dict(cur, conn, num_soup_links, api_key)
     #add_soup(cur, conn, filename)
-    make_hist(cur, conn)
+    #make_hist(cur, conn)
+    make_scatter_diet(cur, conn)
     unittest.main(verbosity=2)
