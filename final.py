@@ -15,11 +15,12 @@ import locale
 import numpy as np
 import matplotlib.pyplot as plt
 
-def write_calculations(dict, filename):
+def write_calculations(list, filename):
     f = open(filename, 'w')
-    for entry in dict:
-        f.write(entry + ": " + str(dict[entry]) + "\n")
-    f.write("\n")
+    for dict in list:
+        for entry in dict:
+            f.write(entry + ": " + str(dict[entry]) + "\n")
+        f.write("\n")
     f.close()
 
 def open_database(db_name):
@@ -133,7 +134,7 @@ def add_soup(cur, conn, filename):
         cur.execute("INSERT OR IGNORE INTO Soups (id, diet_id, gluten_free, cost_per_serving, preparation_time) VALUES (?,?,?,?,?)",(soup_id, diet_id, soup_dict[soup]["Gluten Free"], soup_dict[soup]["Cost per Serving"], soup_dict[soup]["Preparation Time"]))
     conn.commit()
 
-def make_hist(cur, conn, outfile):
+def make_hist(cur, conn):
     '''
     makes histogram of preparation times w/ stack by diet type
     also calculates and writes to outfile avg prep times by category.overall
@@ -176,10 +177,9 @@ def make_hist(cur, conn, outfile):
     avg_time /= (len(vegan_times) + len(vegetarian_times) + len(none_times))
     times_dict = {"Average Preparation Time": "minutes",
                   "Vegan": round(avg_vegan_time,2),
-                  "Vegetarian": round(avg_vegetarian_time,2),
-                  "Average": round(avg_none_time,2),
+                  "Vegetarian": round(avg_vegetarian_time, 2),
+                  "None": round(avg_none_time,2),
                   "Aggregate": round(avg_time,2)}
-    write_calculations(times_dict, outfile)
     num_bars = max_time // 15
     bins = []
     for i in range(num_bars):
@@ -193,6 +193,7 @@ def make_hist(cur, conn, outfile):
     plt.title('Preparation Times of Recipes of Different Diets')
     plt.legend()
     plt.show()
+    return times_dict
 
 def make_scatter(cur, conn):
     cur.execute("SELECT preparation_time, cost_per_serving FROM Soups WHERE preparation_time > 0 AND gluten_free = True AND Soups.preparation_time < 600 AND Soups.cost_per_serving < 600")
@@ -249,6 +250,36 @@ def make_scatter(cur, conn):
     plt.suptitle('Preparation Time vs Cost Per Serving\nCosts and Times above 600 omitted')
     plt.show()
 
+def calc_cost(cur,conn):
+    cur.execute('SELECT Soups.cost_per_serving FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Diets.diet = "vegan"')
+    vegan_list = cur.fetchall()
+    cur.execute('SELECT Soups.cost_per_serving FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Diets.diet = "vegetarian"')
+    vegetarian_list = cur.fetchall()
+    cur.execute('SELECT Soups.cost_per_serving FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Diets.diet = "none"')
+    none_list = cur.fetchall()
+    vegan_cost = 0
+    vegetarian_cost = 0
+    none_cost = 0
+    total_cost = 0
+    for cost in vegan_list:
+        vegan_cost += cost[0]
+    total_cost += vegan_cost
+    vegan_cost /= len(vegan_list)
+    for cost in vegetarian_list:
+        vegetarian_cost += cost[0]
+    total_cost += vegetarian_cost    
+    vegetarian_cost /= len(vegetarian_list)
+    for cost in none_list:
+        none_cost += cost[0]
+    total_cost += none_cost
+    none_cost /= len(none_list)
+    total_cost /= (len(vegan_list) + len(vegetarian_list) + len(none_list))
+    cost_dict = {"Average Cost Per Serving": "cents",
+                  "Vegan": round(vegan_cost,2),
+                  "Vegetarian": round(vegetarian_cost,2),
+                  "None": round(none_cost,2),
+                  "Aggregate": round(total_cost,2)}
+    return cost_dict
 
 if __name__ == '__main__':
     cur, conn = open_database('soup.db')
@@ -264,6 +295,9 @@ if __name__ == '__main__':
     add_soup(cur, conn, filename)
     '''
     outfile = "calculations.txt"
-    make_hist(cur, conn, outfile)
+    calculations_list = []
+    calculations_list.append(make_hist(cur, conn))
     make_scatter(cur, conn)
+    calculations_list.append(calc_cost(cur, conn))
+    write_calculations(calculations_list, outfile)
     unittest.main(verbosity=2)
