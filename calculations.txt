@@ -1,0 +1,33 @@
+Type: Number of Recipes
+Vegan and Gluten Free: 1
+Vegetarian and Gluten Free: 1
+None and Gluten Free: 6
+Total Gluten Free: 8
+Vegan and Contains Gluten: 0
+Vegetarian and Contains Gluten: 4
+None and Contains Gluten: 9
+Total Contains Gluten: 13
+Total Vegan: 1
+Total Vegetarian: 5
+Total None: 15
+Total: 21
+
+Type: Average Rating (out of 5)
+Average Vegan Rating: 4.5
+Average Vegetarian Ratings: 4.6
+Average None Ratings: 4.65
+Average Gluten Free Ratings: 4.66
+Average Contains Gluten Ratings: 4.62
+
+Average Preparation Time: minutes
+Vegan: 45.0
+Vegetarian: 58.0
+None: 103.33
+Aggregate: 89.76
+
+Average Cost Per Serving: cents
+Vegan: 66.21
+Vegetarian: 113.73
+None: 179.34
+Aggregate: 158.33
+
