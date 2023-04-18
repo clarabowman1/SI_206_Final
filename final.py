@@ -15,6 +15,13 @@ import locale
 import numpy as np
 import matplotlib.pyplot as plt
 
+def write_calculations(dict, filename):
+    f = open(filename, 'w')
+    for entry in dict:
+        f.write(entry + ": " + str(dict[entry]) + "\n")
+    f.write("\n")
+    f.close()
+
 def open_database(db_name):
     path = os.path.dirname(os.path.abspath(__file__))
     conn = sqlite3.connect(path+'/'+db_name)
@@ -126,32 +133,53 @@ def add_soup(cur, conn, filename):
         cur.execute("INSERT OR IGNORE INTO Soups (id, diet_id, gluten_free, cost_per_serving, preparation_time) VALUES (?,?,?,?,?)",(soup_id, diet_id, soup_dict[soup]["Gluten Free"], soup_dict[soup]["Cost per Serving"], soup_dict[soup]["Preparation Time"]))
     conn.commit()
 
-def make_hist(cur, conn):
-    cur.execute('SELECT Soups.preparation_time FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Diets.diet = "vegan"')
+def make_hist(cur, conn, outfile):
+    '''
+    makes histogram of preparation times w/ stack by diet type
+    also calculates and writes to outfile avg prep times by category.overall
+    '''
+    cur.execute('SELECT Soups.preparation_time FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Diets.diet = "vegan" AND Soups.preparation_time > 0')
     max_time = 0
     vegan_times = cur.fetchall()
     vegan = []
+    avg_vegan_time = 0
+    avg_time = 0
     for time in vegan_times:
-        if (time[0] > 0):
-            vegan.append(time[0])
+        avg_vegan_time += time[0]
+        avg_time += time[0]
+        vegan.append(time[0])
         if (time[0] > max_time):
             max_time = time[0]
-    cur.execute('SELECT Soups.preparation_time FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Diets.diet = "vegetarian"')
+    avg_vegan_time /= len(vegan_times)
+    cur.execute('SELECT Soups.preparation_time FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Diets.diet = "vegetarian" AND Soups.preparation_time > 0')
     vegetarian_times = cur.fetchall()
     vegetarian = []
+    avg_vegetarian_time = 0
     for time in vegetarian_times:
-        if (time[0] > 0):
-            vegetarian.append(time[0])
+        vegetarian.append(time[0])
+        avg_vegetarian_time += time[0]
+        avg_time += time[0]
         if (time[0] > max_time):
             max_time = time[0]
-    cur.execute('SELECT Soups.preparation_time FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Diets.diet = "none"')
+    avg_vegetarian_time /= len(vegetarian_times)
+    cur.execute('SELECT Soups.preparation_time FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Diets.diet = "none" AND Soups.preparation_time > 0')
     none_times = cur.fetchall()
     none = []
+    avg_none_time = 0
     for time in none_times:
-        if (time[0] > 0):
-            none.append(time[0])
+        none.append(time[0])
+        avg_none_time += time[0]
+        avg_time += time[0]
         if (time[0] > max_time):
             max_time = time[0]
+    avg_none_time /= len(none_times)
+    avg_time /= (len(vegan_times) + len(vegetarian_times) + len(none_times))
+    times_dict = {"Average Preparation Time": "minutes",
+                  "Vegan": round(avg_vegan_time,2),
+                  "Vegetarian": round(avg_vegetarian_time,2),
+                  "Average": round(avg_none_time,2),
+                  "Aggregate": round(avg_time,2)}
+    write_calculations(times_dict, outfile)
     num_bars = max_time // 15
     bins = []
     for i in range(num_bars):
@@ -166,10 +194,10 @@ def make_hist(cur, conn):
     plt.legend()
     plt.show()
 
-def make_scatter_gf(cur, conn):
-    cur.execute("SELECT preparation_time, cost_per_serving FROM Soups WHERE preparation_time > 0 AND gluten_free = True AND cost_per_serving < 500")
+def make_scatter(cur, conn):
+    cur.execute("SELECT preparation_time, cost_per_serving FROM Soups WHERE preparation_time > 0 AND gluten_free = True AND Soups.preparation_time < 600 AND Soups.cost_per_serving < 600")
     gf_list = cur.fetchall()
-    cur.execute("SELECT preparation_time, cost_per_serving FROM Soups WHERE preparation_time > 0 AND gluten_free = False AND cost_per_serving < 500")
+    cur.execute("SELECT preparation_time, cost_per_serving FROM Soups WHERE preparation_time > 0  AND gluten_free = False AND Soups.preparation_time < 600 AND Soups.cost_per_serving < 600")
     non_gf_list = cur.fetchall()
     gf_x = []
     gf_y = []
@@ -181,19 +209,19 @@ def make_scatter_gf(cur, conn):
     for recipe in non_gf_list:
         ngf_x.append(recipe[0])
         ngf_y.append(recipe[1])
+    fig = plt.figure(figsize =(10,6))
+    ax1 = fig.add_subplot(121)
+    gf = plt.scatter(gf_x, gf_y, c = "purple")
+    ngf = plt.scatter(ngf_x, ngf_y, c = "orange")
     plt.xlabel('Preparation Time (min)')
     plt.ylabel('Cost per Serving (cents)')
-    plt.title('Preparation Time vs Cost per Serving of Gluten Free and Non-Gluten Free Recipes')
-    plt.scatter(gf_x, gf_y)
-    plt.scatter(ngf_x, ngf_y)
-    plt.show()
-
-def make_scatter_diet(cur, conn):
-    cur.execute('SELECT Soups.preparation_time, Soups.cost_per_serving FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Soups.preparation_time > 0 AND Soups.cost_per_serving < 500 AND Diets.diet = "vegan"')
+    plt.title('Gluten Free and Non-Gluten Free Recipes')
+    plt.legend((gf, ngf),("Gluten Free", "Not Gluten Free"))
+    cur.execute('SELECT Soups.preparation_time, Soups.cost_per_serving FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Soups.preparation_time > 0 AND Diets.diet = "vegan" AND Soups.preparation_time < 600 AND Soups.cost_per_serving < 600')
     vegan_list = cur.fetchall()
-    cur.execute('SELECT Soups.preparation_time, Soups.cost_per_serving FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Soups.preparation_time > 0 AND Soups.cost_per_serving < 500 AND Diets.diet = "vegetarian"')
+    cur.execute('SELECT Soups.preparation_time, Soups.cost_per_serving FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Soups.preparation_time > 0 AND Diets.diet = "vegetarian" AND Soups.preparation_time < 600 AND Soups.cost_per_serving < 600')
     vegetarian_list = cur.fetchall()
-    cur.execute('SELECT Soups.preparation_time, Soups.cost_per_serving FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Soups.preparation_time > 0 AND Soups.cost_per_serving < 500 AND Diets.diet = "none"')
+    cur.execute('SELECT Soups.preparation_time, Soups.cost_per_serving FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Soups.preparation_time > 0 AND Diets.diet = "none" AND Soups.preparation_time < 600 AND Soups.cost_per_serving < 600')
     none_list = cur.fetchall()
     vv_x = []
     vv_y = []
@@ -210,26 +238,32 @@ def make_scatter_diet(cur, conn):
     for recipe in none_list:
         n_x.append(recipe[0])
         n_y.append(recipe[1]) 
-    plt.scatter(n_x, n_y, c = 'red')
-    plt.scatter(veg_x, veg_y, c = 'blue')
-    plt.scatter(vv_x, vv_y, c = 'green')
+    ax2 = fig.add_subplot(122)
+    none = plt.scatter(n_x, n_y, c = 'red')
+    vegetarian = plt.scatter(veg_x, veg_y, c = 'blue')
+    vegan = plt.scatter(vv_x, vv_y, c = 'green')
     plt.xlabel('Preparation Time (min)')
     plt.ylabel('Cost per Serving (cents)')
-    plt.title('Preparation Time vs Cost per Serving of Different Diets')
+    plt.title('Different Diets')
+    plt.legend((none, vegetarian, vegan),("None", "Vegetarian", "Vegan"))
+    plt.suptitle('Preparation Time vs Cost Per Serving\nCosts and Times above 600 omitted')
     plt.show()
 
 
 if __name__ == '__main__':
     cur, conn = open_database('soup.db')
     create_tables(cur, conn)
-    #query = "slow cooker soup"
-    #api_key = "7566718381f04a4aa1c907595917725e"
-    #num_soup_links = get_soup_links(query, cur, conn)
-    #dir_path = os.path.dirname(os.path.realpath(__file__))
-    #filename = dir_path + '/' + "soup.json"
-    #cache = load_json(filename)
-    #get_soup_dict(cur, conn, num_soup_links, api_key)
-    #add_soup(cur, conn, filename)
-    #make_hist(cur, conn)
-    make_scatter_diet(cur, conn)
+    '''
+    query = "veggie soup"
+    api_key = "7566718381f04a4aa1c907595917725e"
+    num_soup_links = get_soup_links(query, cur, conn)
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    filename = dir_path + '/' + "soup.json"
+    cache = load_json(filename)
+    get_soup_dict(cur, conn, num_soup_links, api_key)
+    add_soup(cur, conn, filename)
+    '''
+    outfile = "calculations.txt"
+    make_hist(cur, conn, outfile)
+    make_scatter(cur, conn)
     unittest.main(verbosity=2)
