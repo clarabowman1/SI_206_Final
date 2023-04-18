@@ -134,6 +134,110 @@ def add_soup(cur, conn, filename):
         cur.execute("INSERT OR IGNORE INTO Soups (id, diet_id, gluten_free, cost_per_serving, preparation_time) VALUES (?,?,?,?,?)",(soup_id, diet_id, soup_dict[soup]["Gluten Free"], soup_dict[soup]["Cost per Serving"], soup_dict[soup]["Preparation Time"]))
     conn.commit()
 
+def make_stackedbarchart(cur, conn):
+    x = ["Vegan", "Vegetarian", "None"]
+    gluten_free = []
+    contains_gluten = []
+    diet_counts = {}
+    diet_counts["Type"] = "Number of Recipes"
+    cur.execute("SELECT COUNT() FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Soups.gluten_free = True AND Diets.diet = 'vegan'")
+    gluten_free_vegan = cur.fetchall()[0][0]
+    diet_counts["Vegan and Gluten Free"] = gluten_free_vegan
+    gluten_free.append(gluten_free_vegan)
+    cur.execute("SELECT COUNT() FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Soups.gluten_free = True AND Diets.diet = 'vegetarian'")
+    gluten_free_vegetarian = cur.fetchall()[0][0]
+    diet_counts["Vegetarian and Gluten Free"] = gluten_free_vegetarian
+    gluten_free.append(gluten_free_vegetarian)
+    cur.execute("SELECT COUNT() FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Soups.gluten_free = True AND Diets.diet = 'none'")
+    gluten_free_none = cur.fetchall()[0][0]
+    diet_counts["None and Gluten Free"] = gluten_free_none
+    gluten_free.append(gluten_free_none)
+    diet_counts["Total Gluten Free"] = (gluten_free_vegan + gluten_free_vegetarian + gluten_free_none)
+    cur.execute("SELECT COUNT() FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Soups.gluten_free = False AND Diets.diet = 'vegan'")
+    gluten_vegan = cur.fetchall()[0][0]
+    diet_counts["Vegan and Contains Gluten"] = gluten_vegan
+    contains_gluten.append(gluten_vegan)
+    cur.execute("SELECT COUNT() FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Soups.gluten_free = False AND Diets.diet = 'vegetarian'")
+    gluten_vegetarian = cur.fetchall()[0][0]
+    diet_counts["Vegetarian and Contains Gluten"] = gluten_vegetarian
+    contains_gluten.append(gluten_vegetarian)
+    cur.execute("SELECT COUNT() FROM Soups JOIN Diets ON Soups.diet_id = Diets.id WHERE Soups.gluten_free = False AND Diets.diet = 'none'")
+    gluten_none = cur.fetchall()[0][0]
+    diet_counts["None and Contains Gluten"] = gluten_none
+    contains_gluten.append(gluten_none)
+    diet_counts["Total Contains Gluten"] = (gluten_vegan + gluten_vegetarian + gluten_none)
+    diet_counts["Total Vegan"] = (gluten_free_vegan + gluten_vegan)
+    diet_counts["Total Vegetarian"] = (gluten_free_vegetarian + gluten_vegetarian)
+    diet_counts["Total None"] = (gluten_free_none + gluten_none)
+    diet_counts["Total"] = (gluten_free_vegan + gluten_free_vegetarian + gluten_free_none + gluten_vegan + gluten_vegetarian + gluten_none)
+
+    plt.bar(x, contains_gluten, color="orange")
+    plt.bar(x, gluten_free, bottom=contains_gluten, color="purple")
+    plt.legend(("Contains Gluten", "Gluten Free"))
+    plt.title("Distribution of Receipes into Diet Categories and their Gluten Statuses")
+    plt.ylabel("Number of Recipes")
+    plt.xlabel("Diets")
+    plt.show()
+    return diet_counts
+
+def make_barchart(cur, conn):
+    names = ['Vegan', 'Vegetarian', 'None', 'Gluten Free', 'Contains Gluten']
+    ratings = []
+    ratings_dict = {}
+    ratings_dict["Type"] = "Average Rating (out of 5)"
+    cur.execute('SELECT Links.rating FROM Links JOIN Soups ON Links.id = Soups.id JOIN Diets ON Soups.diet_id = Diets.id WHERE Diets.diet = "vegan"')
+    vegan_ratings = cur.fetchall()
+    avg = 0
+    for rating in vegan_ratings:
+        avg += rating[0]
+    avg /= len(vegan_ratings)
+    ratings_dict["Average Vegan Rating"] = round(avg, 2)
+    ratings.append(avg)
+    
+    cur.execute('SELECT Links.rating FROM Links JOIN Soups ON Links.id = Soups.id JOIN Diets ON Soups.diet_id = Diets.id WHERE Diets.diet = "vegetarian"')
+    vegetarian_ratings = cur.fetchall()
+    avg = 0
+    for rating in vegetarian_ratings:
+        avg += rating[0]
+    avg /= len(vegetarian_ratings)
+    ratings_dict["Average Vegetarian Ratings"] = round(avg, 2)
+    ratings.append(avg)
+    
+    cur.execute('SELECT Links.rating FROM Links JOIN Soups ON Links.id = Soups.id JOIN Diets ON Soups.diet_id = Diets.id WHERE Diets.diet = "none"')
+    none_ratings = cur.fetchall()
+    avg = 0
+    for rating in none_ratings:
+        avg += rating[0]
+    avg /= len(none_ratings)
+    ratings_dict["Average None Ratings"] = round(avg, 2)
+    ratings.append(avg)
+    
+    cur.execute('SELECT Links.rating FROM Links JOIN Soups ON Links.id = Soups.id WHERE Soups.gluten_free = True')
+    gluten_free_ratings = cur.fetchall()
+    avg = 0
+    for rating in gluten_free_ratings:
+        avg += rating[0]
+    avg /= len(gluten_free_ratings)
+    ratings_dict["Average Gluten Free Ratings"] = round(avg, 2)
+    ratings.append(avg)
+    
+    cur.execute('SELECT Links.rating FROM Links JOIN Soups ON Links.id = Soups.id WHERE Soups.gluten_free = False')
+    containsgluten_ratings = cur.fetchall()
+    avg = 0
+    for rating in containsgluten_ratings:
+        avg += rating[0]
+    avg /= len(containsgluten_ratings)
+    ratings_dict["Average Contains Gluten Ratings"] = round(avg, 2)
+    ratings.append(avg)
+    colors = ["green", "blue", "red", "orange", "purple"]
+    plt.ylim(4,5)
+    plt.bar(names, ratings, color=colors)
+    plt.title("Average Rating by Dietary Category")
+    plt.ylabel("Ranking")
+    plt.xlabel("Dietary Category")
+    plt.show()
+    return ratings_dict
+
 def make_hist(cur, conn):
     '''
     makes histogram of preparation times w/ stack by diet type
@@ -282,10 +386,9 @@ def calc_cost(cur,conn):
     return cost_dict
 
 if __name__ == '__main__':
-    cur, conn = open_database('soup.db')
+    cur, conn = open_database('soup1.db')
     create_tables(cur, conn)
-    '''
-    query = "veggie soup"
+    query = "soup"
     api_key = "7566718381f04a4aa1c907595917725e"
     num_soup_links = get_soup_links(query, cur, conn)
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -293,9 +396,10 @@ if __name__ == '__main__':
     cache = load_json(filename)
     get_soup_dict(cur, conn, num_soup_links, api_key)
     add_soup(cur, conn, filename)
-    '''
     outfile = "calculations.txt"
     calculations_list = []
+    calculations_list.append(make_stackedbarchart(cur, conn))
+    calculations_list.append(make_barchart(cur, conn))
     calculations_list.append(make_hist(cur, conn))
     make_scatter(cur, conn)
     calculations_list.append(calc_cost(cur, conn))
