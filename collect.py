@@ -83,7 +83,7 @@ def write_json(filename, dict):
     with open(filename, 'w') as outfile:
         json.dump(dict, outfile, indent=4)
 
-def get_soup_dict(curr, conn, num_soup_links, api_key):
+def get_soup_dict(curr, conn, num_soup_links, api_key, filename):
     ''' 
     parameter is dict of soup names and links
     returns nested dictionary
@@ -139,11 +139,11 @@ if __name__ == '__main__':
     cur, conn = open_database('soup1.db')
     create_tables(cur, conn)
     query = "soup"
-    api_key = "7566718381f04a4aa1c907595917725e"
+    api_key = "34c68b6e5e824e79af2773d2eb05c8eb"
     num_soup_links = get_soup_links(query, cur, conn)
     dir_path = os.path.dirname(os.path.realpath(__file__))
     filename = dir_path + '/' + "soup.json"
     cache = load_json(filename)
-    get_soup_dict(cur, conn, num_soup_links, api_key)
+    get_soup_dict(cur, conn, num_soup_links, api_key, filename)
     add_soup(cur, conn, filename)
     unittest.main(verbosity=2)
